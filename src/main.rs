@@ -5,9 +5,6 @@ extern crate tokio;
 extern crate log;
 extern crate env_logger;
 
-extern crate tokio_threadpool;
-extern crate futures_cpupool;
-
 // instead of tokio::prelude, which also re-exports streams and futures,
 // we use the futures crate directly to get access to futures::sync::mspc
 use futures::*;
@@ -18,9 +15,6 @@ use std::fmt;
 use std::collections::HashMap;
 use std::io;
 use std::io::Read;
-
-use tokio_threadpool::Builder;
-use futures_cpupool::CpuPool;
 
 #[derive(Clone, Debug)]
 struct Command {
@@ -100,27 +94,19 @@ impl Multiplexor {
     }
 
     fn run(&self, receiver: sync::mpsc::Receiver<Command>) {
-        //let pool = CpuPool::new(4);
-        let thread_pool = Builder::new()
-            .pool_size(4)
-            .keep_alive(Some(Duration::from_secs(30)))
-            .build();
-
         let mut processors = HashMap::new();
 
-        thread_pool.sender().spawn(
-        //tokio::spawn(
-        //pool.sender().spawn(
+        tokio::spawn(
             receiver
                 .map(move |x| {
                     info!("Got from receiver: {}", x);
                     let user_id = x.user_id;
-                    let acceptor = processors.entry(user_id).or_insert_with(|| ProcessorAcceptor::new(user_id));
+                    let acceptor = processors.entry(user_id)
+                                .or_insert_with(|| ProcessorAcceptor::new(user_id));
                     acceptor.send(x);
                 })
-                // turn the stream into a future that waits for the end of the stream.
                 .fold((), |_, _| Ok(()))
-        ).unwrap();
+        );
     }
 }
 
@@ -151,11 +137,12 @@ fn main() {
             //
             let mut n = 0;
             loop {
+                // TODO: stop this
                 let command = Command::new(n % 5,n);
                 sender.clone().send_all(stream::once(Ok(command))).wait().ok();
                 info!("Sent {}", n);
                 n += 1;
-                //thread::sleep(Duration::from_millis(300));
+                thread::sleep(Duration::from_millis(10));
             }
         });
 
