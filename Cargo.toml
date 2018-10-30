@@ -1,0 +1,13 @@
+[package]
+name = "test-streams"
+version = "0.1.0"
+authors = ["Alik Kurdyukov <akurdyukov@gmail.com>"]
+
+[dependencies]
+futures = "0.1.25"
+tokio = "0.1.11"
+actix = "0.7.5"
+log = "0.4"
+env_logger = "0.5.13"
+tokio-threadpool = "0.1.8"
+futures-cpupool = "0.1.8"
